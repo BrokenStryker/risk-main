@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  nextjs:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PYTHON_SERVICE_URL=http://trading-service:8000
+
+  trading-service:
+    build: ./trading_service
+    ports:
+      - "8000:8000"
+    environment:
+      - IBKR_ACCOUNT=${IBKR_ACCOUNT}
+      - IBKR_PORT=${IBKR_PORT}
+      - IBKR_HOST=${IBKR_HOST} 
