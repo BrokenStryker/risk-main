@@ -36,6 +36,12 @@ export default function Header() {
             >
               Notes
             </Link>
+            <Link
+              href="/trading"
+              className="hover:underline"
+            >
+              Trading
+            </Link>
           </SignedIn>
         </nav>
 
@@ -82,6 +88,15 @@ export default function Header() {
                   onClick={toggleMenu}
                 >
                   Notes
+                </Link>
+              </div>
+              <div>
+                <Link
+                  href="/trading"
+                  className="block hover:underline"
+                  onClick={toggleMenu}
+                >
+                  Trading
                 </Link>
               </div>
             </SignedIn>
