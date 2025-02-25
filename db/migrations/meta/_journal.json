@@ -8,6 +8,13 @@
       "when": 1740354829519,
       "tag": "0000_lucky_silk_fever",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1740371743580,
+      "tag": "0001_flaky_roulette",
+      "breakpoints": true
     }
   ]
 }

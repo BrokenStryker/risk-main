@@ -11,7 +11,6 @@ interface NavTab {
 
 const tabs: NavTab[] = [
   // ... your existing tabs
-  { label: "Trading", href: "/trading" }
 ]
 
 export function NavTabs() {

@@ -1,4 +1,5 @@
 import { getProfileByUserIdAction } from "@/actions/profiles-actions";
+import Footer from "@/components/footer";
 import Header from "@/components/header";
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from "@/components/utilities/providers";
@@ -12,8 +13,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Notes App",
-  description: "A full-stack template for a notes app."
+  title: "Cockpit - Advanced Trade Risk Management",
+  description: "Your all-in-one platform for risk assessment and management solutions."
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -35,8 +36,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             defaultTheme="dark"
             disableTransitionOnChange
           >
-            <Header />
-            {children}
+            <div className="flex flex-col min-h-screen">
+              <Header />
+              <main className="flex-grow">
+                {children}
+              </main>
+              <Footer />
+            </div>
             <Toaster />
           </Providers>
         </body>

@@ -1,108 +1,58 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
-import { List, Menu, X } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { UserButton } from "@clerk/nextjs";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { Button } from "./ui/button";
 
 export default function Header() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
-
+  const pathname = usePathname();
+  
+  const navItems = [
+    { name: "Setup", href: "/setup" },
+    { name: "Changelog", href: "/changelog" },
+    { name: "Pricing", href: "/pricing" },
+  ];
+  
   return (
-    <header className="bg-primary text-primary-foreground shadow-md">
-      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <List className="h-6 w-6" />
-          <div className="text-xl font-bold">Notes App</div>
-        </div>
-
-        <nav className="hidden md:flex space-x-4">
-          <Link
-            href="/"
-            className="hover:underline"
-          >
-            Home
+    <header className="border-b bg-black text-white">
+      <div className="container flex h-16 items-center">
+        <div className="mr-8">
+          <Link href="/" className="flex items-center space-x-2">
+            <span className="font-bold text-xl">Cockpit</span>
           </Link>
-
-          <SignedIn>
-            <Link
-              href="/notes"
-              className="hover:underline"
-            >
-              Notes
-            </Link>
-            <Link
-              href="/trading"
-              className="hover:underline"
-            >
-              Trading
-            </Link>
-          </SignedIn>
-        </nav>
-
-        <div className="flex items-center space-x-4">
-          <SignedOut>
-            <SignInButton />
-          </SignedOut>
-
-          <SignedIn>
-            <UserButton />
-          </SignedIn>
-
-          <div className="md:hidden">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleMenu}
-              aria-label="Toggle menu"
-            >
-              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </Button>
+        </div>
+        
+        <nav className="flex-1 flex justify-center">
+          <div className="flex items-center space-x-4">
+            {navItems.map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={cn(
+                  "px-4 py-2 text-sm font-medium rounded-full bg-[#111111] transition-opacity hover:opacity-70",
+                  pathname === item.href 
+                    ? "text-white" 
+                    : "text-gray-300"
+                )}
+              >
+                {item.name}
+              </Link>
+            ))}
           </div>
+        </nav>
+        
+        <div className="flex items-center space-x-4">
+          <Link
+            href="/dashboard"
+            className="px-4 py-2 text-sm font-medium rounded-full bg-white text-black transition-opacity hover:opacity-70"
+          >
+            Dashboard
+          </Link>
+          <UserButton afterSignOutUrl="/" />
         </div>
       </div>
-
-      {isMenuOpen && (
-        <nav className="md:hidden bg-primary-foreground text-primary p-4">
-          <div className="space-y-2">
-            <div>
-              <Link
-                href="/"
-                className="block hover:underline"
-                onClick={toggleMenu}
-              >
-                Home
-              </Link>
-            </div>
-
-            <SignedIn>
-              <div>
-                <Link
-                  href="/notes"
-                  className="block hover:underline"
-                  onClick={toggleMenu}
-                >
-                  Notes
-                </Link>
-              </div>
-              <div>
-                <Link
-                  href="/trading"
-                  className="block hover:underline"
-                  onClick={toggleMenu}
-                >
-                  Trading
-                </Link>
-              </div>
-            </SignedIn>
-          </div>
-        </nav>
-      )}
     </header>
   );
 }

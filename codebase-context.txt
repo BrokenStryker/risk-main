@@ -10,6 +10,8 @@ File Tree:
                 └── page.tsx
                 └── route.ts
                     └── route.ts
+                        └── route.ts
+                    └── route.ts
         └── layout.tsx
             └── page.tsx
             └── page.tsx
@@ -66,8 +68,10 @@ File Tree:
             └── providers.tsx
         └── db.ts
             └── profiles-queries.ts
+            └── tickers-queries.ts
             └── index.ts
             └── profiles-schema.ts
+            └── tickers-schema.ts
     └── drizzle.config.ts
         └── stripe.ts
         └── utils.ts
@@ -487,6 +491,114 @@ async function handleCheckoutSession(event: Stripe.Event) {
 
 ==== FILE END: app\api\stripe\webhooks\route.ts ====
 
+==== FILE START: app\api\trading\ibkr\tickers\route.ts ====
+"use server"
+
+import { auth } from "@clerk/nextjs/server"
+import { NextResponse } from "next/server"
+
+const IBKR_API_KEY = process.env.IBKR_API_KEY
+const IBKR_API_URL = process.env.IBKR_API_URL
+
+async function fetchIBKRData(symbol: string) {
+  const response = await fetch(`${IBKR_API_URL}/market/stocks/${symbol}`, {
+    headers: {
+      "Authorization": `Bearer ${IBKR_API_KEY}`
+    }
+  })
+  return response.json()
+}
+
+export async function GET() {
+  const { userId } = auth()
+  
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  try {
+    // Implement IBKR API call here
+    // This is a placeholder - adjust according to actual IBKR API structure
+    const tickers = await fetchIBKRData("all")
+    return NextResponse.json({ tickers })
+  } catch (error) {
+    console.error("Error fetching from IBKR:", error)
+    return NextResponse.json(
+      { error: "Failed to fetch tickers from IBKR" },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: Request) {
+  const { userId } = auth()
+  
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  try {
+    const { symbol } = await request.json()
+    // Fetch real-time data from IBKR
+    const tickerData = await fetchIBKRData(symbol)
+    return NextResponse.json({ ticker: tickerData })
+  } catch (error) {
+    console.error("Error fetching from IBKR:", error)
+    return NextResponse.json(
+      { error: "Failed to fetch ticker from IBKR" },
+      { status: 500 }
+    )
+  }
+} 
+==== FILE END: app\api\trading\ibkr\tickers\route.ts ====
+
+==== FILE START: app\api\trading\tickers\route.ts ====
+"use server"
+
+import { createTicker, getAllTickersForUser } from "@/db/queries/tickers-queries"
+import { auth } from "@clerk/nextjs/server"
+import { NextResponse } from "next/server"
+
+export async function GET() {
+  const { userId } = auth()
+  
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  try {
+    const tickers = await getAllTickersForUser(userId)
+    return NextResponse.json({ tickers })
+  } catch (error) {
+    console.error("Error fetching tickers:", error)
+    return NextResponse.json(
+      { error: "Failed to fetch tickers" },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: Request) {
+  const { userId } = auth()
+  
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  try {
+    const { symbol } = await request.json()
+    const ticker = await createTicker({ userId, symbol })
+    return NextResponse.json({ ticker })
+  } catch (error) {
+    console.error("Error creating ticker:", error)
+    return NextResponse.json(
+      { error: "Failed to create ticker" },
+      { status: 500 }
+    )
+  }
+}
+==== FILE END: app\api\trading\tickers\route.ts ====
+
 ==== FILE START: app\layout.tsx ====
 import { getProfileByUserIdAction } from "@/actions/profiles-actions";
 import Header from "@/components/header";
@@ -566,22 +678,56 @@ export default async function NotesPage() {
 
 ==== FILE START: app\trading\page.tsx ====
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
+interface TickerData {
+  id: number;
+  symbol: string;
+  price: number | null;
+}
+
 export default function TradingBotPage() {
   const [tickerInput, setTickerInput] = useState("");
-  const [tickers, setTickers] = useState<{ symbol: string; price: number }[]>([]);
+  const [tickers, setTickers] = useState<TickerData[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  function handleAddTicker() {
+  async function fetchTickers() {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/trading/ibkr/tickers");
+      const data = await res.json();
+      if (data.tickers) {
+        setTickers(data.tickers);
+      }
+    } catch (error) {
+      console.error("Error loading tickers:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchTickers();
+  }, []);
+
+  async function handleAddTicker() {
     if (!tickerInput) return;
-    const mockPrice = parseFloat((Math.random() * 100).toFixed(2));
-    setTickers((prev) => [
-      ...prev,
-      { symbol: tickerInput.toUpperCase(), price: mockPrice }
-    ]);
-    setTickerInput("");
+    try {
+      const res = await fetch("/api/trading/ibkr/tickers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ symbol: tickerInput.toUpperCase() })
+      });
+      const data = await res.json();
+      if (data.ticker) {
+        setTickers((prev) => [...prev, data.ticker]);
+      }
+      setTickerInput("");
+    } catch (error) {
+      console.error("Error adding ticker:", error);
+    }
   }
 
   return (
@@ -595,16 +741,21 @@ export default function TradingBotPage() {
         />
         <Button onClick={handleAddTicker}>Add Ticker</Button>
       </div>
+
       <div className="mt-4">
         <h2 className="text-xl font-semibold">Tickers</h2>
-        <ul className="mt-2 space-y-2">
-          {tickers.map((t, i) => (
-            <li key={i} className="flex items-center space-x-4">
-              <span>{t.symbol}</span>
-              <span>Price: ${t.price}</span>
-            </li>
-          ))}
-        </ul>
+        {loading ? (
+          <p>Loading...</p>
+        ) : (
+          <ul className="mt-2 space-y-2">
+            {tickers.map((t) => (
+              <li key={t.id} className="flex items-center space-x-4">
+                <span>{t.symbol}</span>
+                <span>Price: ${t.price ?? "--"}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );
@@ -5237,12 +5388,13 @@ export const Providers = ({ children, ...props }: ThemeProviderProps) => {
 import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { profilesTable } from "./schema";
+import { profilesTable, tickersTable } from "./schema";
 
 config({ path: ".env.local" });
 
 const schema = {
-  profiles: profilesTable
+  profiles: profilesTable,
+  tickers: tickersTable
 };
 
 const client = postgres(process.env.DATABASE_URL!);
@@ -5316,8 +5468,33 @@ export const deleteProfile = async (userId: string) => {
 
 ==== FILE END: db\queries\profiles-queries.ts ====
 
+==== FILE START: db\queries\tickers-queries.ts ====
+"use server";
+
+import { db } from "@/db/db";
+import { eq } from "drizzle-orm";
+import { tickersTable, InsertTicker, SelectTicker } from "../schema/tickers-schema";
+
+export async function getAllTickersForUser(userId: string): Promise<SelectTicker[]> {
+  return db.select().from(tickersTable).where(eq(tickersTable.userId, userId));
+}
+
+export async function createTicker(data: InsertTicker): Promise<SelectTicker> {
+  const [newTicker] = await db
+    .insert(tickersTable)
+    .values({
+      userId: data.userId,
+      symbol: data.symbol,
+      price: data.price || null
+    })
+    .returning();
+  return newTicker;
+}
+==== FILE END: db\queries\tickers-queries.ts ====
+
 ==== FILE START: db\schema\index.ts ====
 export * from "./profiles-schema";
+export * from "./tickers-schema";
 
 ==== FILE END: db\schema\index.ts ====
 
@@ -5342,6 +5519,34 @@ export type InsertProfile = typeof profilesTable.$inferInsert;
 export type SelectProfile = typeof profilesTable.$inferSelect;
 
 ==== FILE END: db\schema\profiles-schema.ts ====
+
+==== FILE START: db\schema\tickers-schema.ts ====
+import { pgTable, serial, text, numeric, timestamp } from "drizzle-orm/pg-core";
+
+export const tickersTable = pgTable("tickers", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  symbol: text("symbol").notNull(),
+  price: numeric("price"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull().$onUpdate(() => new Date())
+});
+
+export type InsertTicker = {
+  userId: string;
+  symbol: string;
+  price?: number;
+};
+
+export type SelectTicker = {
+  id: number;
+  userId: string;
+  symbol: string;
+  price: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+==== FILE END: db\schema\tickers-schema.ts ====
 
 ==== FILE START: drizzle.config.ts ====
 import { config } from "dotenv";
